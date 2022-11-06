@@ -1,11 +1,13 @@
+# Attaching necessary libraries
 library(data.table)
 library(dplyr)
 library(ggplot2)
 library(xgboost)
 
-#Calling in the dataset
+# Reading in the data
 data <- fread('./nfl_team_stats_2002-2021.csv')
 
+# Creating data for wins, losses, and ties
 data$diff <- (data$score_away - data$score_home)
 data$winner <- 1
 data$winner[data$diff < 0] <- data$home[data$diff < 0]
@@ -39,6 +41,7 @@ tied_teams <- c(x,y)
 
 season_2002$Ties[season_2002$Teams == tied_teams] <- 1
 
+# Win percentages
 season_2002$win_percent <- season_2002$Wins/(season_2002$Wins+season_2002$Loses+season_2002$Ties)
 
 
@@ -79,6 +82,7 @@ season_2003$win_percent <- season_2003$Wins/(season_2003$Wins+season_2003$Loses+
 arr1 <- c()
 arr2 <- c()
 
+# Calculating team records
 for (n in season_2003$Teams){
   arr1 <- append(arr1, sum(nfl_2003$score_away[which(nfl_2003$away == n)]))
 }
@@ -99,11 +103,12 @@ season_2002<-season_2002[, !drops, with = FALSE]
 
 mylogit <- glm(formula = super_bowl_winner ~ Wins + Loses + Ties + win_percent + total_points, data = season_2002)
 
-
+# Predicting the Super Bowl winner
 season_2003$super_bowl_winner <- predict(mylogit, newdata = season_2002)
 
 season_2002$Teams <- droped
 
+# Creating our plot
 ggplot(season_2003, aes(x = reorder(Teams, super_bowl_winner), y = super_bowl_winner)) +
   geom_point(aes(colour = Teams)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
