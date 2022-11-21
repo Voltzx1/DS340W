@@ -1,7 +1,6 @@
 # Attaching necessary libraries
 library(data.table)
 library(dplyr)
-library(ggplot2)
 library(xgboost)
 
 # Reading in the data
@@ -24,6 +23,8 @@ data$loser[data$loser == 1] <- NA
 #Seperating data into each respective season
 nfl_2002 <- data[data$date %between% c("2002-08-01", "2003-04-01")]
 nfl_2003 <- data[data$date %between% c("2003-08-01", "2004-04-01")]
+nfl_2004 <- data[data$date %between% c("2004-08-01", "2005-04-01")]
+nfl_2005 <- data[data$date %between% c("2005-08-01", "2006-04-01")]
 
 #######################2002##########################
 #Adding total wins and loses for each team
@@ -44,7 +45,7 @@ season_2002$Ties[season_2002$Teams == tied_teams] <- 1
 # Win percentages
 season_2002$win_percent <- season_2002$Wins/(season_2002$Wins+season_2002$Loses+season_2002$Ties)
 
-
+#Adding total points column 
 arr1 <- c()
 arr2 <- c()
 
@@ -58,6 +59,51 @@ for (n in season_2002$Teams){
 
 season_2002$total_points <- mapply("+", arr1, arr2)
 
+#Adding total rushing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2002$Teams){
+  arr1 <- append(arr1, sum(nfl_2002$rushing_yards_away[which(nfl_2002$away == n)]))
+}
+
+for (n in season_2002$Teams){
+  arr2 <- append(arr2, sum(nfl_2002$rushing_yards_home[which(nfl_2002$home == n)]))
+}
+
+season_2002$total_rushing_yards <- mapply("+", arr1, arr2)
+
+#Adding total passing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2002$Teams){
+  arr1 <- append(arr1, sum(nfl_2002$passing_yards_away[which(nfl_2002$away == n)]))
+}
+
+for (n in season_2002$Teams){
+  arr2 <- append(arr2, sum(nfl_2002$passing_yards_home[which(nfl_2002$home == n)]))
+}
+
+season_2002$total_passing_yards <- mapply("+", arr1, arr2)
+
+#Adding total yards column
+
+season_2002$total_yards <- season_2002$total_rushing_yards + season_2002$total_passing_yards
+
+#Adding total turnovers column 
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2002$Teams){
+  arr1 <- append(arr1, sum(nfl_2002$turnovers_away[which(nfl_2002$away == n)]))
+}
+
+for (n in season_2002$Teams){
+  arr2 <- append(arr2, sum(nfl_2002$turnovers_home[which(nfl_2002$home == n)]))
+}
+
+season_2002$total_turnovers <- mapply("+", arr1, arr2)
 
 #################################################
 
@@ -92,27 +138,217 @@ for (n in season_2003$Teams){
 }
 
 season_2003$total_points <- mapply("+", arr1, arr2)
+
+#Adding total rushing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2003$Teams){
+  arr1 <- append(arr1, sum(nfl_2003$rushing_yards_away[which(nfl_2003$away == n)]))
+}
+
+for (n in season_2003$Teams){
+  arr2 <- append(arr2, sum(nfl_2003$rushing_yards_home[which(nfl_2003$home == n)]))
+}
+
+season_2003$total_rushing_yards <- mapply("+", arr1, arr2)
+
+#Adding total passing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2003$Teams){
+  arr1 <- append(arr1, sum(nfl_2003$passing_yards_away[which(nfl_2003$away == n)]))
+}
+
+for (n in season_2003$Teams){
+  arr2 <- append(arr2, sum(nfl_2003$passing_yards_home[which(nfl_2003$home == n)]))
+}
+
+season_2003$total_passing_yards <- mapply("+", arr1, arr2)
+
+#Adding total yards column
+
+season_2003$total_yards <- season_2003$total_rushing_yards + season_2003$total_passing_yards
+
+#Adding total turnovers column 
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2003$Teams){
+  arr1 <- append(arr1, sum(nfl_2003$turnovers_away[which(nfl_2003$away == n)]))
+}
+
+for (n in season_2003$Teams){
+  arr2 <- append(arr2, sum(nfl_2003$turnovers_home[which(nfl_2003$home == n)]))
+}
+
+season_2003$total_turnovers <- mapply("+", arr1, arr2)
+
 #################################################
-season_2002$super_bowl_winner <- 0
-season_2002$super_bowl_winner[season_2002$Teams == "Buccaneers"] <- 1
 
-droped<- season_2002$Teams
+######################2004##########################
+#Adding total wins and loses for each team
+wins <- as.data.table(table(nfl_2004$winner))
+loses <- as.data.table(table(nfl_2004$loser))
 
-drops <- c("Teams")
-season_2002<-season_2002[, !drops, with = FALSE]
+season_2004 <- cbind(wins, loses$N)
+colnames(season_2004) <- c('Teams', 'Wins', 'Loses')
 
-mylogit <- glm(formula = super_bowl_winner ~ Wins + Loses + Ties + win_percent + total_points, data = season_2002)
+#adding in any ties during the season
+season_2004$Ties <- 0
+x <- na.omit(nfl_2002$away[nfl_2004$tied == 1])
+y <- na.omit(nfl_2002$home[nfl_2004$tied == 1])
+tied_teams <- c(x,y)
 
-# Predicting the Super Bowl winner
-season_2003$super_bowl_winner <- predict(mylogit, newdata = season_2002)
+season_2004$Ties[season_2004$Teams == tied_teams] <- 1
 
-season_2002$Teams <- droped
+season_2004$win_percent <- season_2004$Wins/(season_2004$Wins+season_2004$Loses+season_2004$Ties)
 
-# Creating our plot
-ggplot(season_2003, aes(x = reorder(Teams, super_bowl_winner), y = super_bowl_winner)) +
-  geom_point(aes(colour = Teams)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  theme(legend.position = "none") + 
-  xlab("NFL Teams") + 
-  ylab("Predicted Winner") + 
-  ggtitle("2003 Super Bowl Winner Prediction")
+arr1 <- c()
+arr2 <- c()
+
+# Calculating team records
+for (n in season_2004$Teams){
+  arr1 <- append(arr1, sum(nfl_2004$score_away[which(nfl_2004$away == n)]))
+}
+
+for (n in season_2004$Teams){
+  arr2 <- append(arr2, sum(nfl_2004$score_home[which(nfl_2004$home == n)]))
+}
+
+season_2004$total_points <- mapply("+", arr1, arr2)
+
+#Adding total rushing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2004$Teams){
+  arr1 <- append(arr1, sum(nfl_2004$rushing_yards_away[which(nfl_2004$away == n)]))
+}
+
+for (n in season_2004$Teams){
+  arr2 <- append(arr2, sum(nfl_2004$rushing_yards_home[which(nfl_2004$home == n)]))
+}
+
+season_2004$total_rushing_yards <- mapply("+", arr1, arr2)
+
+#Adding total passing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2004$Teams){
+  arr1 <- append(arr1, sum(nfl_2004$passing_yards_away[which(nfl_2004$away == n)]))
+}
+
+for (n in season_2004$Teams){
+  arr2 <- append(arr2, sum(nfl_2004$passing_yards_home[which(nfl_2004$home == n)]))
+}
+
+season_2004$total_passing_yards <- mapply("+", arr1, arr2)
+
+#Adding total yards column
+
+season_2004$total_yards <- season_2004$total_rushing_yards + season_2004$total_passing_yards
+
+#Adding total turnovers column 
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2004$Teams){
+  arr1 <- append(arr1, sum(nfl_2004$turnovers_away[which(nfl_2004$away == n)]))
+}
+
+for (n in season_2004$Teams){
+  arr2 <- append(arr2, sum(nfl_2004$turnovers_home[which(nfl_2004$home == n)]))
+}
+
+season_2004$total_turnovers <- mapply("+", arr1, arr2)
+
+#################################################
+
+######################2005##########################
+#Adding total wins and loses for each team
+wins <- as.data.table(table(nfl_2005$winner))
+loses <- as.data.table(table(nfl_2005$loser))
+
+season_2005 <- cbind(wins, loses$N)
+colnames(season_2005) <- c('Teams', 'Wins', 'Loses')
+
+#adding in any ties during the season
+season_2005$Ties <- 0
+x <- na.omit(nfl_2002$away[nfl_2005$tied == 1])
+y <- na.omit(nfl_2002$home[nfl_2005$tied == 1])
+tied_teams <- c(x,y)
+
+season_2005$Ties[season_2005$Teams == tied_teams] <- 1
+
+season_2005$win_percent <- season_2005$Wins/(season_2005$Wins+season_2005$Loses+season_2005$Ties)
+
+arr1 <- c()
+arr2 <- c()
+
+# Calculating team records
+for (n in season_2005$Teams){
+  arr1 <- append(arr1, sum(nfl_2005$score_away[which(nfl_2005$away == n)]))
+}
+
+for (n in season_2005$Teams){
+  arr2 <- append(arr2, sum(nfl_2005$score_home[which(nfl_2005$home == n)]))
+}
+
+season_2005$total_points <- mapply("+", arr1, arr2)
+
+#Adding total rushing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2005$Teams){
+  arr1 <- append(arr1, sum(nfl_2005$rushing_yards_away[which(nfl_2005$away == n)]))
+}
+
+for (n in season_2005$Teams){
+  arr2 <- append(arr2, sum(nfl_2005$rushing_yards_home[which(nfl_2005$home == n)]))
+}
+
+season_2005$total_rushing_yards <- mapply("+", arr1, arr2)
+
+#Adding total passing yards column
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2005$Teams){
+  arr1 <- append(arr1, sum(nfl_2005$passing_yards_away[which(nfl_2005$away == n)]))
+}
+
+for (n in season_2005$Teams){
+  arr2 <- append(arr2, sum(nfl_2005$passing_yards_home[which(nfl_2005$home == n)]))
+}
+
+season_2005$total_passing_yards <- mapply("+", arr1, arr2)
+
+#Adding total yards column
+
+season_2005$total_yards <- season_2005$total_rushing_yards + season_2005$total_passing_yards
+
+#Adding total turnovers column 
+arr1 <- c()
+arr2 <- c()
+
+for (n in season_2005$Teams){
+  arr1 <- append(arr1, sum(nfl_2005$turnovers_away[which(nfl_2005$away == n)]))
+}
+
+for (n in season_2005$Teams){
+  arr2 <- append(arr2, sum(nfl_2005$turnovers_home[which(nfl_2005$home == n)]))
+}
+
+season_2005$total_turnovers <- mapply("+", arr1, arr2)
+
+#################################################
+
+fwrite(season_2002, "season_2002.csv")
+fwrite(season_2003, "season_2002.csv")
+fwrite(season_2004, "season_2002.csv")
+fwrite(season_2005, "season_2005.csv")
+
